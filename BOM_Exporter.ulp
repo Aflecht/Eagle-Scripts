@@ -1,0 +1,227 @@
+#usage	"BOM Exporter"
+
+
+//
+// Build component list
+//
+
+string Parse_Description(string source_text)
+{
+	char   previous_character[] = { 0, 0 };
+	string result_text;
+	int    is_inside_tag = 0;
+	int    parsing_ready = 0;
+	int    text_length   = strlen(source_text);
+
+	for (int i = 0; i < text_length && !parsing_ready; i++)
+	{
+		if (source_text[i] == '<')
+			is_inside_tag = 1;
+
+		if (!is_inside_tag)
+			result_text += source_text[i];
+
+		if (source_text[i] == '>')
+		{
+			if ((previous_character[1] == 'b' || previous_character[1] == 'B') &&
+			    (previous_character[0] == 'r' || previous_character[0] == 'R'))
+				parsing_ready = 1;
+
+			is_inside_tag = 0;
+		}
+
+		previous_character[1] = previous_character[0];
+		previous_character[0] = source_text[i];
+	}
+
+	return result_text;
+}
+
+
+string part_info[];
+int    part_count = 0;
+
+schematic(current_schematic)
+{
+	current_schematic.parts(part)
+	{
+		// Basic info
+		part_info[part_count]  = part.name;
+		part_info[part_count] += "\t" + Parse_Description(part.device.description);
+		part_info[part_count] += "\t" + part.value;
+		part_info[part_count] += "\t" + part.device.name;
+		part_info[part_count] += "\t" + part.device.package.name;
+
+		// Count the number of pads and drills
+		int pad_count   = 0;
+		int	drill_count = 0;
+		part.device.package.contacts(contact)
+		{
+			pad_count++;
+
+			if (contact.pad)
+				if (contact.pad.drill != 0)
+					drill_count++;
+		}
+
+		// Number of pads
+		string pad_count_string;
+		sprintf(pad_count_string, "\t%d", pad_count);
+		part_info[part_count] += pad_count_string;
+
+		// Through hole technology?
+		if (!drill_count)
+		{
+			part_info[part_count] += "\tNo";
+		} else {
+			if (drill_count == pad_count)
+				part_info[part_count] += "\tYes";
+			else
+				part_info[part_count] += "\tERROR!!!";
+		}
+
+		// Manufacturer & Part Order Number
+		string manufacturer = " ";
+		string part_id      = " ";
+
+		if (part.attribute["MF"])
+			manufacturer = part.attribute["MF"];
+
+		if (part.attribute["MPN"])
+			part_id = part.attribute["MPN"];
+
+		part_info[part_count] += "\t" + manufacturer;
+		part_info[part_count] += "\t" + part_id;
+
+		part_info[part_count] = strupr(part_info[part_count]);
+
+		part_count++;
+	}
+}
+
+
+//
+// Group identical components from part_info[]
+//
+
+string grouped_part_info[];
+int    grouped_part_count = 0;
+
+
+for (int i = 0; i < part_count; i++)
+{
+	if (part_info[i] != " ")
+	{
+		string component_names;
+		int    component_count = 0;
+		int    cut_location1   = strstr(part_info[i], "\t");
+		string match_string1   = strsub(part_info[i], cut_location1);
+
+		for (int x = i; x < part_count; x++)
+		{
+			if (part_info[x] != " ")
+			{
+				int    cut_location2 = strstr(part_info[x], "\t");
+				string match_string2 = strsub(part_info[x], cut_location2);
+
+				if (match_string1 == match_string2)
+				{
+					string comma_string;
+					if (component_count)
+						comma_string = ", ";
+
+					component_names += comma_string + strsub(part_info[x], 0, cut_location2);
+					component_count++;
+
+					part_info[x] = " ";
+				}
+			}
+		}
+
+		string component_count_string;
+		sprintf(component_count_string, "\t%d", component_count);
+		grouped_part_info[grouped_part_count++] = component_names + match_string1 + component_count_string;
+	}
+}
+
+
+
+//
+// Display BOM
+//
+
+string manufacturer_name = "Mouser";
+string manufacturer_part_id;
+int    selected_part = 0;
+
+
+int result = dlgDialog("BOM Exporter")
+{
+	dlgListView("Part ID/Reference\tDescription\tValue\tDevice\tPackage\tPads\tTHT\tMF\tMPN\tQty per BOM", grouped_part_info, selected_part);
+
+	dlgPushButton("+&Save") dlgAccept();
+	dlgPushButton("-Cancel") dlgReject();
+};
+
+
+
+//
+// Save BOM into a CSV file
+//
+
+if (result)
+{
+	string file_name;
+	file_name = dlgFileSave("Select a file", "", "*.csv");
+
+	if (file_name)
+	{
+		output(file_name, "wt")
+		{
+
+			printf("Part ID/Reference,Description,Value,Device,Package,Pads,THT,MF,MPN,Qty per BOM\n");
+			for (int row = 0; row < grouped_part_count; row++)
+			{
+				printf("\"");
+
+				string current_row  = grouped_part_info[row];
+				int    row_length   = strlen(current_row);
+				int    row_location = 0;
+				
+				while (row_location < row_length)
+				{
+					switch (current_row[row_location])
+					{
+						case '\t':
+							printf("\",\"");
+							break;							
+
+						case '"':
+							printf("''");
+							break;							
+
+						case '\n':
+							printf(" ");
+							break;							
+
+						default:
+							printf("%c", current_row[row_location]);
+					}
+
+					row_location++;
+				}
+
+				printf("\"\n");
+			}
+		}
+
+		dlgDialog("Export Done")
+		{
+			dlgLabel("BOM saved in location:\n" + file_name);
+			dlgPushButton("+OK") dlgAccept();
+		};
+	}
+}
+
+
+exit(0);
