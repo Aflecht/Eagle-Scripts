@@ -1,0 +1,173 @@
+#usage  "Assign_Component_Info"
+
+
+//
+// Build component list
+//
+
+string Parse_Description(string source_text)
+{
+    char   previous_character[] = { 0, 0 };
+    string result_text;
+    int    is_inside_tag = 0;
+    int    parsing_ready = 0;
+    int    text_length   = strlen(source_text);
+
+    for (int i = 0; i < text_length && !parsing_ready; i++)
+    {
+        if (source_text[i] == '<')
+            is_inside_tag = 1;
+
+        if (!is_inside_tag)
+            result_text += source_text[i];
+
+        if (source_text[i] == '>')
+        {
+            if ((previous_character[1] == 'b' || previous_character[1] == 'B') &&
+                (previous_character[0] == 'r' || previous_character[0] == 'R'))
+                parsing_ready = 1;
+
+            is_inside_tag = 0;
+        }
+
+        previous_character[1] = previous_character[0];
+        previous_character[0] = source_text[i];
+    }
+
+    return result_text;
+}
+
+
+string part_name[];
+string part_value[];
+string part_device_name[];
+string part_device_package[];
+
+string part_info[];
+int    part_count = 0;
+
+schematic(current_schematic)
+{
+    current_schematic.parts(part)
+    {
+        // Basic info
+        part_name[part_count]           = part.name;
+        part_value[part_count]          = part.value;
+        part_device_name[part_count]    = part.device.name;
+        part_device_package[part_count] = part.device.package.name;
+
+        part_info[part_count]  = part.name;
+        part_info[part_count] += "\t" + Parse_Description(part.device.description);
+        part_info[part_count] += "\t" + part.value;
+        part_info[part_count] += "\t" + part.device.name;
+        part_info[part_count] += "\t" + part.device.package.name;
+
+        // Count the number of pads and drills
+        int pad_count   = 0;
+        int drill_count = 0;
+        part.device.package.contacts(contact)
+        {
+            pad_count++;
+
+            if (contact.pad)
+                if (contact.pad.drill != 0)
+                    drill_count++;
+        }
+
+        // Number of pads
+        string pad_count_string;
+        sprintf(pad_count_string, "\t%d", pad_count);
+        part_info[part_count] += pad_count_string;
+
+        // Through hole technology?
+        if (!drill_count)
+        {
+            part_info[part_count] += "\tNo";
+        } else {
+            if (drill_count == pad_count)
+                part_info[part_count] += "\tYes";
+            else
+                part_info[part_count] += "\tERROR!!!";
+        }
+
+        // Manufacturer & Part Order Number
+        string manufacturer = " ";
+        string part_id      = " ";
+
+        if (part.attribute["MF"])
+            manufacturer = part.attribute["MF"];
+
+        if (part.attribute["MPN"])
+            part_id = part.attribute["MPN"];
+
+        part_info[part_count] += "\t" + manufacturer;
+        part_info[part_count] += "\t" + part_id;
+
+        part_info[part_count] = strupr(part_info[part_count]);
+
+        part_count++;
+    }
+}
+
+
+
+//
+// Display BOM
+//
+
+string manufacturer_name = "Mouser";
+string manufacturer_part_id;
+int    selected_part = 0;
+
+
+int result = dlgDialog("Manufacturer & Part Number Assigner")
+{
+    dlgHBoxLayout
+    {
+        dlgLabel("Manufacturer (MF):");
+        dlgStringEdit(manufacturer_name);
+        dlgLabel("Manufacturer Part Number (MPN):");
+        dlgStringEdit(manufacturer_part_id);
+    };
+
+    dlgLabel("Select Value/Device/Package reference component from the below list.");
+    dlgLabel("Manufacturer/Part Number attributes will be added to ALL similar components.");
+    dlgListView("Part ID/Reference\tDescription\tValue\tDevice\tPackage\tPads\tTHT\tMF\tMPN", part_info, selected_part);
+
+    dlgPushButton("+&ASSIGN ATTRIBUTES") dlgAccept();
+    dlgPushButton("-Cancel") dlgReject();
+};
+
+
+
+//
+// Assign MF & MPN attributes
+//
+
+string result_string;
+
+if (result)
+{
+    result_string += "CHANGE DISPLAY OFF;\n";
+
+    for (int i = 0; i < part_count; i++)
+    {
+        if (part_value[i] == part_value[selected_part] &&
+            part_device_name[i] == part_device_name[selected_part] &&
+            part_device_package[i] == part_device_package[selected_part])
+        {
+            string temp_string1;
+            string temp_string2;
+
+            sprintf(temp_string1, "ATTRIBUTE %s %s '%s';\n", part_name[i], "MF", manufacturer_name);
+            sprintf(temp_string2, "ATTRIBUTE %s %s '%s';\n", part_name[i], "MPN", manufacturer_part_id);
+
+            result_string += temp_string1;
+            result_string += temp_string2;
+        }
+    }
+}
+
+
+exit(result_string);
+
