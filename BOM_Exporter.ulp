@@ -1,3 +1,13 @@
+/*
+	BOM export ULP for EAGLE.
+	Written by Sami Koistinen in 2016.
+
+	Designed to be compatible with Smart-Prototyping.com's BOM specifications/requirements.
+
+    Use this ULP with your own risk.
+    I take no responsibility whatsoever of anything that might happen to anyone/anything using this script.
+*/
+
 #usage	"BOM_Exporter"
 
 
