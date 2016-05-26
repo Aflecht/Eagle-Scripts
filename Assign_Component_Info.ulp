@@ -42,6 +42,7 @@ string part_name[];
 string part_value[];
 string part_device_name[];
 string part_device_package[];
+int    part_sheet[];
 
 string part_info[];
 int    part_count = 0;
@@ -55,6 +56,11 @@ schematic(current_schematic)
         part_value[part_count]          = part.value;
         part_device_name[part_count]    = part.device.name;
         part_device_package[part_count] = part.device.package.name;
+
+        part.instances(instance)
+        {
+            part_sheet[part_count] = instance.sheet;
+        }       
 
         part_info[part_count]  = part.name;
         part_info[part_count] += "\t" + Parse_Description(part.device.description);
@@ -102,6 +108,7 @@ schematic(current_schematic)
 
         part_info[part_count] += "\t" + manufacturer;
         part_info[part_count] += "\t" + part_id;
+//        part_info[part_count] += "\t" + part_sheet[part_count];     // !!!!!!!!!
 
         part_info[part_count] = strupr(part_info[part_count]);
 
@@ -115,7 +122,7 @@ schematic(current_schematic)
 // Display BOM
 //
 
-string manufacturer_name = "Mouser";
+string manufacturer_name;
 string manufacturer_part_id;
 int    selected_part = 0;
 
@@ -156,12 +163,15 @@ if (result)
             part_device_name[i] == part_device_name[selected_part] &&
             part_device_package[i] == part_device_package[selected_part])
         {
+            string temp_sheet;
             string temp_string1;
             string temp_string2;
 
+            sprintf(temp_sheet, "EDIT .S%d;\n", part_sheet[i]);
             sprintf(temp_string1, "ATTRIBUTE %s %s '%s';\n", part_name[i], "MF", manufacturer_name);
             sprintf(temp_string2, "ATTRIBUTE %s %s '%s';\n", part_name[i], "MPN", manufacturer_part_id);
 
+            result_string += temp_sheet;
             result_string += temp_string1;
             result_string += temp_string2;
         }
