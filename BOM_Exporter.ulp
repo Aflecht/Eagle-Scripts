@@ -93,6 +93,7 @@ schematic(current_schematic)
 		// Manufacturer & Part Order Number
 		string manufacturer = " ";
 		string part_id      = " ";
+		string info         = " ";
 
 		if (part.attribute["MF"])
 			manufacturer = part.attribute["MF"];
@@ -100,10 +101,15 @@ schematic(current_schematic)
 		if (part.attribute["MPN"])
 			part_id = part.attribute["MPN"];
 
+		if (part.attribute["INFO"])
+			info = part.attribute["INFO"];
+
 		part_info[part_count] += "\t" + manufacturer;
 		part_info[part_count] += "\t" + part_id;
 
 		part_info[part_count] = strupr(part_info[part_count]);
+
+		part_info[part_count] += "\t" + info;
 
 		part_count++;
 	}
@@ -167,7 +173,7 @@ int    selected_part = 0;
 
 int result = dlgDialog("BOM Exporter")
 {
-	dlgListView("Part ID/Reference\tDescription\tValue\tDevice\tPackage\tPads\tTHT\tMF\tMPN\tQty per BOM", grouped_part_info, selected_part);
+	dlgListView("Part ID/Reference\tDescription\tValue\tDevice\tPackage\tPads\tTHT\tMF\tMPN\tSource/Link/Datasheet/Note\tQty per BOM", grouped_part_info, selected_part);
 
 	dlgPushButton("+&Save") dlgAccept();
 	dlgPushButton("-Cancel") dlgReject();
@@ -189,7 +195,7 @@ if (result)
 		output(file_name, "wt")
 		{
 
-			printf("Part ID/Reference,Description,Value,Device,Package,Pads,THT,MF,MPN,Qty per BOM\n");
+			printf("Part ID/Reference,Description,Value,Device,Package,Pads,THT,MF,MPN,Source/Link/Datasheet/Note,Qty per BOM\n");
 			for (int row = 0; row < grouped_part_count; row++)
 			{
 				printf("\"");

@@ -113,6 +113,7 @@ schematic(current_schematic)
         // Manufacturer & Part Order Number
         string manufacturer = " ";
         string part_id      = " ";
+        string info         = " ";
 
         if (part.attribute["MF"])
             manufacturer = part.attribute["MF"];
@@ -120,11 +121,15 @@ schematic(current_schematic)
         if (part.attribute["MPN"])
             part_id = part.attribute["MPN"];
 
+        if (part.attribute["INFO"])
+            info = part.attribute["INFO"];
+
         part_info[part_count] += "\t" + manufacturer;
         part_info[part_count] += "\t" + part_id;
-//        part_info[part_count] += "\t" + part_sheet[part_count];     // !!!!!!!!!
 
         part_info[part_count] = strupr(part_info[part_count]);
+
+        part_info[part_count] += "\t" + info;
 
         part_count++;
     }
@@ -138,6 +143,7 @@ schematic(current_schematic)
 
 string manufacturer_name;
 string manufacturer_part_id;
+string info_note;
 int    selected_part = 0;
 
 
@@ -149,11 +155,13 @@ int result = dlgDialog("Manufacturer & Part Number Assigner")
         dlgStringEdit(manufacturer_name);
         dlgLabel("Manufacturer Part Number (MPN):");
         dlgStringEdit(manufacturer_part_id);
+        dlgLabel("Source/Link/Datasheet/Note:");
+        dlgStringEdit(info_note);
     };
 
     dlgLabel("Select Value/Device/Package reference component from the below list.");
-    dlgLabel("Manufacturer/Part Number attributes will be added to ALL similar components.");
-    dlgListView("Part ID/Reference\tDescription\tValue\tDevice\tPackage\tPads\tTHT\tMF\tMPN", part_info, selected_part);
+    dlgLabel("Manufacturer/Part Number/Note attributes will be added to ALL similar components.");
+    dlgListView("Part ID/Reference\tDescription\tValue\tDevice\tPackage\tPads\tTHT\tMF\tMPN\tSource/Link/Datasheet/Note", part_info, selected_part);
 
     dlgPushButton("+&ASSIGN ATTRIBUTES") dlgAccept();
     dlgPushButton("-Cancel") dlgReject();
@@ -180,14 +188,17 @@ if (result)
             string temp_sheet;
             string temp_string1;
             string temp_string2;
+            string temp_string3;
 
             sprintf(temp_sheet, "EDIT .S%d;\n", part_sheet[i]);
             sprintf(temp_string1, "ATTRIBUTE %s %s '%s';\n", part_name[i], "MF", manufacturer_name);
             sprintf(temp_string2, "ATTRIBUTE %s %s '%s';\n", part_name[i], "MPN", manufacturer_part_id);
+            sprintf(temp_string3, "ATTRIBUTE %s %s '%s';\n", part_name[i], "INFO", info_note);
 
             result_string += temp_sheet;
             result_string += temp_string1;
             result_string += temp_string2;
+            result_string += temp_string3;
         }
     }
 }
