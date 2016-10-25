@@ -1,0 +1,75 @@
+/*
+    Manufacturer & Part Number attribute assigner ULP for EAGLE.
+    Written by Sami Koistinen in 2016.
+
+    How to use:
+    1. Run the script.
+    2. Write Attribute name and value into the two text boxes.
+    3. After clicking "ASSIGN ATTRIBUTES" button, all components will be assigned with the attribute & value you just defined.
+
+    Use this ULP with your own risk.
+    I take no responsibility whatsoever of anything that might happen to anyone/anything using this script.
+*/
+
+#usage  "Assign_Attribute_To_All_Components"
+
+
+//
+// Query attribute info
+//
+
+string attribute_name;
+string attribute_value;
+
+
+int result = dlgDialog("Attribute assigner")
+{
+    dlgHBoxLayout
+    {
+        dlgLabel("Attribute name:");
+        dlgStringEdit(attribute_name);
+
+        dlgLabel("Attribute value:");
+        dlgStringEdit(attribute_value);
+    };
+
+    dlgLabel("Give attribute name & value. They will be added to ALL components in all schematic sheets.");
+
+    dlgPushButton("+&ASSIGN ATTRIBUTES") dlgAccept();
+    dlgPushButton("-Cancel") dlgReject();
+};
+
+
+
+//
+// Assign attributes
+//
+
+string result_string;
+
+
+if (result)
+{
+    result_string += "CHANGE DISPLAY OFF;\n";
+
+    schematic(current_schematic)
+    {
+        current_schematic.parts(part)
+        {
+            part.instances(instance)
+            {
+                string temp_sheet;
+                string temp_string;
+                sprintf(temp_sheet, "EDIT .S%d;\n", instance.sheet);
+                sprintf(temp_string, "ATTRIBUTE %s %s '%s';\n", part.name, attribute_name, attribute_value);
+
+                result_string += temp_sheet;
+                result_string += temp_string;
+            }       
+        }
+    }
+}
+
+
+exit(result_string);
+
